@@ -42,6 +42,22 @@ class Tokenizer():
                           '-': self.check_number, '{': self.no_check, '}': self.no_check, '[': self.no_check,
                           ']': self.no_check, ':': self.no_check, ',': self.no_check}
 
+    def run(self):
+        self.check_whitespace()
+        while self.pointer.has_next():
+            temp = self.pointer.next()
+            if temp in self.char2func:
+                self.char2func[temp]()
+            elif temp.isdigit():
+                self.check_number()
+            else:
+                raise Parser_exception('illegal input')
+            self.check_whitespace()
+        self.tokens.append(['END_FILE', None])
+
+    def get_tokens(self):
+        return self.tokens
+
     def check_null(self):
         check_str = 'ull'
         if self.pointer.remain() >= 3:
@@ -183,39 +199,122 @@ class Tokenizer():
                 self.pointer.pre_index()
                 break
 
+class Parser():
+    def __init__(self, tokens):
+        self.data = {}
+        self.pointer = Pointer(tokens)
+
     def run(self):
-        self.check_whitespace()
+        temp = self.pointer.has_and_next('there is no json object')
+        if temp[0] != 'BEGIN_OBJECT':
+            raise Parser_exception('The outermost layer is not a json object')
+        self.data = self.parse_object()
+        temp = self.pointer.has_and_next('there is no END_FILE status')
+        if temp[0] != 'END_FILE':
+            raise Parser_exception('parsing errors: END_FILE')
+
+    def get_data(self):
+        return self.data
+
+    def parse_object(self):
+        data = {}
+        name = None
+        next_status = {'STRING', 'END_OBJECT'}
         while self.pointer.has_next():
             temp = self.pointer.next()
-            if temp in self.char2func:
-                self.char2func[temp]()
-            elif temp.isdigit():
-                self.check_number()
+            cur_status = temp[0]
+            cur_val = temp[1]
+            if cur_status in next_status:
+                if cur_status == 'OTHER':
+                    data[name] = cur_val
+                    next_status = {'COMMA', 'END_OBJECT'}
+                elif cur_status == 'NUMBER':
+                    set_val = set(cur_val)
+                    if '.' in set_val or 'e' in set_val or 'E' in set_val:
+                        cur_val = float(cur_val)
+                    else:
+                        cur_val = int(cur_val)
+                    data[name] = cur_val
+                    next_status = {'COMMA', 'END_OBJECT'}   # # COMMA 逗号   COLON 冒号
+                elif cur_status == 'BEGIN_OBJECT':
+                    data[name] = self.parse_object()
+                    next_status = {'COMMA', 'END_OBJECT'}
+                elif cur_status == 'BEGIN_ARRAY':
+                    data[name] = self.parse_array()
+                    next_status = {'COMMA', 'END_OBJECT'}
+                elif cur_status == 'STRING':
+                    if self.pointer.pre_val(2)[0] == 'COLON':
+                        data[name] = cur_val
+                        # data[name] = cur_val.encode('utf-8').decode("unicode_escape")
+                        next_status = {'COMMA', 'END_OBJECT'}
+                    # elif self.pointer.pre_val(2)[0] in {'BEGIN_OBJECT', 'COMMA'}:
+                    else:
+                        name = cur_val
+                        # name = cur_val.encode('utf-8').decode("unicode_escape")
+                        next_status = {'COLON'}
+                elif cur_status == 'COLON':
+                    next_status = {'STRING', 'NUMBER', 'BEGIN_OBJECT', 'BEGIN_ARRAY', 'OTHER'}
+                elif cur_status == 'COMMA':
+                    next_status = {'STRING'}
+                elif cur_status == 'END_OBJECT':
+                    return data
             else:
-                raise Parser_exception('illegal input')
-            self.check_whitespace()
-        self.tokens.append(['END_FILE', None])
+                raise Parser_exception('parsing errors: %s cant connected after %s in object' % (cur_status, self.pointer.pre_val(2)[0]))
+        raise Parser_exception('parsing errors: object')
+
+    def parse_array(self):
+        data = []
+        next_status = {'STRING', 'NUMBER', 'BEGIN_OBJECT', 'BEGIN_ARRAY', 'END_ARRAY', 'OTHER'}
+        while self.pointer.has_next():
+            temp = self.pointer.next()
+            cur_status = temp[0]
+            cur_val = temp[1]
+            if cur_status in next_status:
+                if cur_status in {'STRING', 'OTHER'}:
+                    data.append(cur_val)
+                    next_status = {'COMMA', 'END_ARRAY'}
+                elif cur_status == 'NUMBER':
+                    set_val = set(cur_val)
+                    if '.' in set_val or 'e' in set_val or 'E' in set_val:
+                        cur_val = float(cur_val)
+                    else:
+                        cur_val = int(cur_val)
+                    data.append(cur_val)
+                    next_status = {'COMMA', 'END_ARRAY'}
+                elif cur_status == 'BEGIN_OBJECT':
+                    data.append(self.parse_object())
+                    next_status = {'COMMA', 'END_ARRAY'}
+                elif cur_status == 'BEGIN_ARRAY':
+                    data.append(self.parse_array())
+                    next_status = {'COMMA', 'END_ARRAY'}
+                elif cur_status == 'COMMA':
+                    next_status = {'STRING', 'NUMBER', 'BEGIN_OBJECT', 'BEGIN_ARRAY', 'OTHER'}
+                elif cur_status == 'END_ARRAY':
+                    return data
+            else:
+                raise Parser_exception('parsing errors: %s cant connected after %s in array' % (cur_status, self.pointer.pre_val(2)[0]))
+        raise Parser_exception('parsing errors: array')
 
 class Pointer():
     def __init__(self, data):
-        self._data = data
+        self.data = data
         self.index = 0
-        self.length = len(self._data)
+        self.length = len(self.data)
 
     def has_next(self):
         return self.index < self.length
 
     def next(self):
         self.index += 1
-        return self._data[self.index - 1]
+        return self.data[self.index - 1]
 
     def has_and_next(self, s):
         if self.has_next():
             return self.next()
         raise Parser_exception(s)
 
-    def pre_val(self):
-        return self._data[max(0, self.index - 1)]
+    def pre_val(self, num = 1):
+        return self.data[max(0, self.index - num)]
 
     def pre_index(self):
         self.index = max(0, self.index - 1)
@@ -229,9 +328,7 @@ class Parser_exception(Exception):
         self.info = info
         print(self.info)
 
-s = r'3.45687e0003456""'
-# for ch in s:
-#     print(ch)
-t = Tokenizer(s)
-t.run()
-print(t.tokens)
+
+a = '\\\t\f'
+for ch in a:
+    print(ord(ch), ch)
