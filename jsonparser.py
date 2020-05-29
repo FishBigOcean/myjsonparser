@@ -1,38 +1,170 @@
 # -*- coding: utf-8 -*-
+
 status = ['BEGIN_OBJECT', 'END_OBJECT', 'BEGIN_ARRAY', 'END_ARRAY', 'END_FILE', 'COLON', 'COMMA', 'STRING', 'NUMBER', 'OTHER']
 status2char = {'BEGIN_OBJECT': '{', 'END_OBJECT': '}', 'BEGIN_ARRAY':'[', 'END_ARRAY': ']', 'COLON': ':', 'COMMA': ','}
-char2status = {'{': 'BEGIN_OBJECT', '}': 'END_OBJECT', '[':'BEGIN_ARRAY', ']': 'END_ARRAY', ':': 'COLON', ',': 'COMMA'}
+char2status = {'{': 'BEGIN_OBJECT', '}': 'END_OBJECT', '[': 'BEGIN_ARRAY', ']': 'END_ARRAY', ':': 'COLON', ',': 'COMMA'}
 
+class Jsonparser():
+    def __init__(self):
+        self._data = {}
 
-# class Jsonparser():
-#     def __init__(self):
-#         self._data = {}
-#
-#     def __setitem__(self, key, value):
-#
-#
-#     def __getitem__(self, item):
-#
-#
-#     def loads(self, s):
-#
-#
-#     def dumps(self, s):
-#
-#
-#     def load_file(self, f):
-#
-#
-#     def dump_file(self, f):
-#
-#
-#     def load_dict(self, d):
-#
-#
-#     def dump_dict(self, f):
-#
-#
-#     def updata(self, d):
+    def __setitem__(self, key, value):
+        d = {key: value}
+        convert = Convert()
+        js = convert.dict2json(d)
+        tokenizer = Tokenizer(js)
+        parser = Parser(tokenizer.run())
+        res = parser.run()
+        self._data.update(res)
+
+    def __getitem__(self, item):
+        if item in self._data:
+            return self._data[item]
+        raise Parser_exception('object key %s is illegal' % item)
+
+    def loads(self, s):
+        tokenizer = Tokenizer(s)
+        parser = Parser(tokenizer.run())
+        self._data = parser.run()
+
+    def dumps(self):
+        convert = Convert()
+        return convert.example2json(self._data)
+# unicode utf-8编码问题
+    def load_file(self, f):
+        with open(f, 'r') as file:
+            js = file.read().encode('utf-8').decode("unicode_escape")
+        tokenizer = Tokenizer(js)
+        parser = Parser(tokenizer.run())
+        self._data = parser.run()
+
+    def dump_file(self, f):
+        convert = Convert()
+        js = convert.example2json(self._data)
+        with open(f, 'w') as file:
+            file.write(repr(js))
+
+    def load_dict(self, d):
+        convert = Convert()
+        js = convert.dict2json(d)
+        tokenizer = Tokenizer(js)
+        parser = Parser(tokenizer.run())
+        self._data = parser.run()
+
+    def dump_dict(self):
+        convert = Convert()
+        return convert.example2dict(self._data)
+
+    def updata(self, d):
+        convert = Convert()
+        js = convert.dict2json(d)
+        tokenizer = Tokenizer(js)
+        parser = Parser(tokenizer.run())
+        res = parser.run()
+        self._data.update(res)
+
+class Convert():
+    def __init__(self):
+        self.data = None
+        self.res = None
+        self.dict = None
+
+    def example2json(self, data):
+        self.data = data
+        self.res = []
+        self.dict2string(self.data)
+        return ''.join(self.res)
+
+    def dict2json(self, data):
+        self.data = data
+        self.dict = {}
+        self.keep_key()
+        return self.example2json(self.dict)
+
+    def example2dict(self, data):
+        return self.deepcopy_dict(data)
+
+    def deepcopy_dict(self, d):
+        temp = {}
+        for key in d:
+            val = d[key]
+            if isinstance(val, dict):
+                temp[key] = self.deepcopy_dict(val)
+            elif isinstance(val, list):
+                temp[key] = self.deepcopy_list(val)
+            else:
+                temp[key] = val
+        return temp
+
+    def deepcopy_list(self, l):
+        temp = []
+        for val in l:
+            if isinstance(val, dict):
+                temp.append(self.deepcopy_dict(val))
+            elif isinstance(val, list):
+                temp.append(self.deepcopy_list(val))
+            else:
+                temp.append(val)
+        return temp
+
+    def keep_key(self):
+        for key in self.data:
+            if isinstance(key, str):
+                self.dict[key] = self.data[key]
+
+    def dict2string(self, d):
+        self.res.append('{')
+        for key in d:
+            if not isinstance(key, str):
+                raise Parser_exception('the key of object must be string')
+            val = d[key]
+            self.res.append('"')
+            self.res.append(key)
+            self.res.append('"')
+            self.res.append(':')
+            if isinstance(val, str):
+                self.res.append('"')
+                self.res.append(val)
+                self.res.append('"')
+            elif isinstance(val, dict):
+                self.dict2string(val)
+            elif isinstance(val, list):
+                self.list2string(val)
+            elif isinstance(val, bool) or val is None:
+                v2s = {None: 'null', True: 'true', False: 'false'}
+                print(val, v2s[val])
+                self.res.append(v2s[val])
+            elif isinstance(val, (float, int)):
+                self.res.append(str(val))
+            self.res.append(',')
+        if self.res[-1] == ',':
+            self.res[-1] = '}'
+        else:
+            self.res.append('}')
+        return
+
+    def list2string(self, l):
+        self.res.append('[')
+        for val in l:
+            if isinstance(val, str):
+                self.res.append('"')
+                self.res.append(val)
+                self.res.append('"')
+            elif isinstance(val, dict):
+                self.dict2string(val)
+            elif isinstance(val, list):
+                self.list2string(val)
+            elif isinstance(val, bool) or val is None:
+                v2s = {None: 'null', True: 'true', False: 'false'}
+                self.res.append(v2s[val])
+            elif isinstance(val, (float, int)):
+                self.res.append(str(val))
+            self.res.append(',')
+        if self.res[-1] == ',':
+            self.res[-1] = ']'
+        else:
+            self.res.append(']')
+        return
 
 class Tokenizer():
     def __init__(self, s):
@@ -54,8 +186,6 @@ class Tokenizer():
                 raise Parser_exception('illegal input')
             self.check_whitespace()
         self.tokens.append(['END_FILE', None])
-
-    def get_tokens(self):
         return self.tokens
 
     def check_null(self):
@@ -212,8 +342,6 @@ class Parser():
         temp = self.pointer.has_and_next('there is no END_FILE status')
         if temp[0] != 'END_FILE':
             raise Parser_exception('parsing errors: END_FILE')
-
-    def get_data(self):
         return self.data
 
     def parse_object(self):
@@ -328,7 +456,31 @@ class Parser_exception(Exception):
         self.info = info
         print(self.info)
 
+# s = '{"xiaojun": 3000000.0, "xiaojun": "中国\u4e2d\\t\\u4e2d", "abc": [125, "sdfasdf"]}'
+# tokenizer = Tokenizer(s)
+# js = tokenizer.run()
+# parser = Parser(js)
+# d = parser.run()
+# print(s)
+# print(js)
+# print(d)
 
-a = '\\\t\f'
-for ch in a:
-    print(ord(ch), ch)
+# fr = './testjson.json'
+# fw = './testjson2.json'
+# a = Jsonparser()
+# a.load_file(fr)
+# print(a._data)
+# a["1"] = {"2": 3}
+# a.dump_file(fw)
+
+js = '{"login": [{"username": "bb", "password": "\\u4e2d\\t"}], "register": [5.6]}'
+a = Jsonparser()
+a.loads(js)
+print(a._data)
+js2 = a.dumps()
+a["register"] = 2
+d = {1:8}
+a.updata(d)
+print(a._data)
+d2 = a.dump_dict()
+print(d2, d2 is a._data)
