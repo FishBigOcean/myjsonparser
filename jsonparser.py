@@ -30,10 +30,13 @@ class Jsonparser():
     def dumps(self):
         convert = Convert()
         return convert.example2json(self._data)
-# unicode utf-8编码问题
+
     def load_file(self, f):
-        with open(f, 'r') as file:
-            js = file.read().encode('utf-8').decode("unicode_escape")
+        try:
+            with open(f, 'r') as file:
+                js = file.read()
+        except IOError:
+            raise IOError("cant read file")
         tokenizer = Tokenizer(js)
         parser = Parser(tokenizer.run())
         self._data = parser.run()
@@ -41,8 +44,11 @@ class Jsonparser():
     def dump_file(self, f):
         convert = Convert()
         js = convert.example2json(self._data)
-        with open(f, 'w') as file:
-            file.write(repr(js))
+        try:
+            with open(f, 'w') as file:
+                file.write(js)
+        except IOError:
+            raise IOError("cant write file")
 
     def load_dict(self, d):
         convert = Convert()
@@ -73,7 +79,7 @@ class Convert():
         self.data = data
         self.res = []
         self.dict2string(self.data)
-        return ''.join(self.res)
+        return ''.join(self.res).encode('unicode-escape').decode('utf-8')
 
     def dict2json(self, data):
         self.data = data
@@ -121,7 +127,7 @@ class Convert():
             self.res.append('"')
             self.res.append(key)
             self.res.append('"')
-            self.res.append(':')
+            self.res.append(': ')
             if isinstance(val, str):
                 self.res.append('"')
                 self.res.append(val)
@@ -132,12 +138,17 @@ class Convert():
                 self.list2string(val)
             elif isinstance(val, bool) or val is None:
                 v2s = {None: 'null', True: 'true', False: 'false'}
-                print(val, v2s[val])
                 self.res.append(v2s[val])
             elif isinstance(val, (float, int)):
-                self.res.append(str(val))
-            self.res.append(',')
-        if self.res[-1] == ',':
+                if val == float('inf') or val == float('-inf'):
+                    if val == float('inf'):
+                        self.res.append('Infinity')
+                    else:
+                        self.res.append('-Infinity')
+                else:
+                    self.res.append(str(val))
+            self.res.append(', ')
+        if self.res[-1] == ', ':
             self.res[-1] = '}'
         else:
             self.res.append('}')
@@ -158,9 +169,16 @@ class Convert():
                 v2s = {None: 'null', True: 'true', False: 'false'}
                 self.res.append(v2s[val])
             elif isinstance(val, (float, int)):
-                self.res.append(str(val))
-            self.res.append(',')
-        if self.res[-1] == ',':
+                if val == float('inf') or val == float('-inf'):
+                    print('Infinity')
+                    if val == float('inf'):
+                        self.res.append('Infinity')
+                    else:
+                        self.res.append('-Infinity')
+                else:
+                    self.res.append(str(val))
+            self.res.append(', ')
+        if self.res[-1] == ', ':
             self.res[-1] = ']'
         else:
             self.res.append(']')
@@ -223,7 +241,7 @@ class Tokenizer():
 
     def check_string(self):
         string = []
-        escapes = {'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'}
+        escapes = {'\"': '\"', '\\': '\\', '/': '\/', 'b': '\b', 'f': '\f', 'n': '\n', 'r': '\r', 't': '\t', 'u': ''}
         while self.pointer.has_next():
             temp = self.pointer.next()
             if ord(temp) < 32: # 0 - 31 is control characters
@@ -231,17 +249,17 @@ class Tokenizer():
             elif temp == '\\':
                 temp = self.pointer.has_and_next('illegal input: no char after \\')
                 if temp in escapes:
-                    string.append('\\')
-                    string.append(temp)
+                    string.append(escapes[temp])
                     if temp == 'u':
                         if self.pointer.remain() >= 4:
                             for i in range(4):
                                 temp = self.pointer.next()
-                                if temp.isdigit() or 'a' <= temp <= 'f' or 'A' <= temp <= 'F': # \uxxxx x is utf-8 code, rang from 0 - 9 or a - f or A - F
-                                    string.append(temp)
+                                if temp.isdigit() or 'a' <= temp <= 'f' or 'A' <= temp <= 'F': # \uxxxx is unicode, x rang from 0 - 9 or a - f or A - F
+                                    continue
                                 else:
                                     break
                             else:
+                                string.append(self.pointer.pre_range(6).encode('utf-8').decode("unicode_escape"))
                                 continue
                         raise Parser_exception('illegal input: utf-8')
                 else:
@@ -373,12 +391,9 @@ class Parser():
                 elif cur_status == 'STRING':
                     if self.pointer.pre_val(2)[0] == 'COLON':
                         data[name] = cur_val
-                        # data[name] = cur_val.encode('utf-8').decode("unicode_escape")
                         next_status = {'COMMA', 'END_OBJECT'}
-                    # elif self.pointer.pre_val(2)[0] in {'BEGIN_OBJECT', 'COMMA'}:
                     else:
                         name = cur_val
-                        # name = cur_val.encode('utf-8').decode("unicode_escape")
                         next_status = {'COLON'}
                 elif cur_status == 'COLON':
                     next_status = {'STRING', 'NUMBER', 'BEGIN_OBJECT', 'BEGIN_ARRAY', 'OTHER'}
@@ -447,6 +462,9 @@ class Pointer():
     def pre_index(self):
         self.index = max(0, self.index - 1)
 
+    def pre_range(self, num):
+        return self.data[max(0, self.index - num): self.index]
+
     def remain(self):
         return self.length - self.index
 
@@ -454,33 +472,4 @@ class Parser_exception(Exception):
     def __init__(self, info):
         super().__init__(self)
         self.info = info
-        print(self.info)
 
-# s = '{"xiaojun": 3000000.0, "xiaojun": "中国\u4e2d\\t\\u4e2d", "abc": [125, "sdfasdf"]}'
-# tokenizer = Tokenizer(s)
-# js = tokenizer.run()
-# parser = Parser(js)
-# d = parser.run()
-# print(s)
-# print(js)
-# print(d)
-
-# fr = './testjson.json'
-# fw = './testjson2.json'
-# a = Jsonparser()
-# a.load_file(fr)
-# print(a._data)
-# a["1"] = {"2": 3}
-# a.dump_file(fw)
-
-js = '{"login": [{"username": "bb", "password": "\\u4e2d\\t"}], "register": [5.6]}'
-a = Jsonparser()
-a.loads(js)
-print(a._data)
-js2 = a.dumps()
-a["register"] = 2
-d = {1:8}
-a.updata(d)
-print(a._data)
-d2 = a.dump_dict()
-print(d2, d2 is a._data)
