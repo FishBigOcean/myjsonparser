@@ -79,7 +79,7 @@ class Convert():
         self.data = data
         self.res = []
         self.dict2string(self.data)
-        return ''.join(self.res).encode('unicode-escape').decode('utf-8')
+        return ''.join(self.res) #.encode('unicode-escape').decode('utf-8')
 
     def dict2json(self, data):
         self.data = data
@@ -125,12 +125,12 @@ class Convert():
                 raise Parser_exception('the key of object must be string')
             val = d[key]
             self.res.append('"')
-            self.res.append(key)
+            self.res.append(key.encode('unicode-escape').decode('utf-8').replace('"', '\\"'))
             self.res.append('"')
             self.res.append(': ')
             if isinstance(val, str):
                 self.res.append('"')
-                self.res.append(val)
+                self.res.append(val.encode('unicode-escape').decode('utf-8').replace('"', '\\"'))
                 self.res.append('"')
             elif isinstance(val, dict):
                 self.dict2string(val)
@@ -159,7 +159,7 @@ class Convert():
         for val in l:
             if isinstance(val, str):
                 self.res.append('"')
-                self.res.append(val)
+                self.res.append(val.encode('unicode-escape').decode('utf-8').replace('"', '\\"'))
                 self.res.append('"')
             elif isinstance(val, dict):
                 self.dict2string(val)
@@ -473,3 +473,10 @@ class Parser_exception(Exception):
         super().__init__(self)
         self.info = info
 
+import json
+js = '{"\\"\u4e2d":"\\""}'
+a = Jsonparser()
+a.loads(js)
+b = a.dumps()
+c = json.dumps(a._data)
+print(js, b, c)

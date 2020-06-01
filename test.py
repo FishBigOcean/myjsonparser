@@ -21,6 +21,7 @@ class Test_parser(unittest.TestCase):
             ('{ "a" : 123    	}', 1),
             ('{"true": "null"}', 1),
             ('{"":"\\t\\n"}', 1),
+            ('{"\\"":"\\""}', 1),
             ('{"中\u4e2d\\u4e2d":"\\r"}', 1),
         ]
         self.json_ok2 = [
@@ -79,7 +80,7 @@ class Test_parser(unittest.TestCase):
             except Exception as e:
                 logging.warning('load_dict error: json_ok %d %s' % (num, case[0]))
                 raise e
-            if d != self.parser.dump_dict():
+            if d != self.parser._data:
                 logging.warning('load_dict error: json_ok %d %s' % (num, case[0]))
                 raise Exception
 
