@@ -125,12 +125,12 @@ class Convert():
                 raise Parser_exception('the key of object must be string')
             val = d[key]
             self.res.append('"')
-            self.res.append(key.encode('unicode-escape').decode('utf-8').replace('"', '\\"'))
+            self.res.append(key.encode('unicode-escape').decode('utf-8').replace('"', '\\"').replace('\\x08', '\\b').replace('\\x0c', '\\f'))
             self.res.append('"')
             self.res.append(': ')
             if isinstance(val, str):
                 self.res.append('"')
-                self.res.append(val.encode('unicode-escape').decode('utf-8').replace('"', '\\"'))
+                self.res.append(val.encode('unicode-escape').decode('utf-8').replace('"', '\\"').replace('\\x08', '\\b').replace('\\x0c', '\\f'))
                 self.res.append('"')
             elif isinstance(val, dict):
                 self.dict2string(val)
@@ -159,7 +159,7 @@ class Convert():
         for val in l:
             if isinstance(val, str):
                 self.res.append('"')
-                self.res.append(val.encode('unicode-escape').decode('utf-8').replace('"', '\\"'))
+                self.res.append(val.encode('unicode-escape').decode('utf-8').replace('"', '\\"').replace('\\x08', '\\b').replace('\\x0c', '\\f'))
                 self.res.append('"')
             elif isinstance(val, dict):
                 self.dict2string(val)
@@ -241,7 +241,7 @@ class Tokenizer():
 
     def check_string(self):
         string = []
-        escapes = {'\"': '\"', '\\': '\\', '/': '\/', 'b': '\b', 'f': '\f', 'n': '\n', 'r': '\r', 't': '\t', 'u': ''}
+        escapes = {'\"': '\"', '\\': '\\', '/': '/', 'b': '\b', 'f': '\f', 'n': '\n', 'r': '\r', 't': '\t', 'u': ''}
         while self.pointer.has_next():
             temp = self.pointer.next()
             if ord(temp) < 32: # 0 - 31 is control characters
@@ -472,11 +472,3 @@ class Parser_exception(Exception):
     def __init__(self, info):
         super().__init__(self)
         self.info = info
-
-import json
-js = '{"\\"\u4e2d":"\\""}'
-a = Jsonparser()
-a.loads(js)
-b = a.dumps()
-c = json.dumps(a._data)
-print(js, b, c)
