@@ -10,8 +10,8 @@ class Jsonparser():
 
     def __setitem__(self, key, value):
         d = {key: value}
-        convert = Convert()
-        js = convert.dict2json(d)
+        converter = Converter()
+        js = converter.dict2json(d)
         tokenizer = Tokenizer(js)
         parser = Parser(tokenizer.run())
         res = parser.run()
@@ -28,8 +28,8 @@ class Jsonparser():
         self._data = parser.run()
 
     def dumps(self):
-        convert = Convert()
-        return convert.example2json(self._data)
+        converter = Converter()
+        return converter.example2json(self._data)
 
     def load_file(self, f):
         try:
@@ -42,8 +42,8 @@ class Jsonparser():
         self._data = parser.run()
 
     def dump_file(self, f):
-        convert = Convert()
-        js = convert.example2json(self._data)
+        converter = Converter()
+        js = converter.example2json(self._data)
         try:
             with open(f, 'w') as file:
                 file.write(js)
@@ -51,25 +51,25 @@ class Jsonparser():
             raise IOError("cant write file")
 
     def load_dict(self, d):
-        convert = Convert()
-        js = convert.dict2json(d)
+        converter = Converter()
+        js = converter.dict2json(d)
         tokenizer = Tokenizer(js)
         parser = Parser(tokenizer.run())
         self._data = parser.run()
 
     def dump_dict(self):
-        convert = Convert()
-        return convert.example2dict(self._data)
+        converter = Converter()
+        return converter.example2dict(self._data)
 
     def updata(self, d):
-        convert = Convert()
-        js = convert.dict2json(d)
+        converter = Converter()
+        js = converter.dict2json(d)
         tokenizer = Tokenizer(js)
         parser = Parser(tokenizer.run())
         res = parser.run()
         self._data.update(res)
 
-class Convert():
+class Converter():
     def __init__(self):
         self.data = None
         self.res = None

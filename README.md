@@ -1,13 +1,13 @@
 # json解析器的python3实现
 ## 1.jsonparser.py
-jsonparser.py中包含六个类，分别为Jsonparser()，Convert()，Tokenizer()，Parser()，Pointer()，Parser_exception()。
+jsonparser.py中包含六个类，分别为Jsonparser()，Converter()，Tokenizer()，Parser()，Pointer()，Parser_exception()。
 
 整体流程：
   
-读取json格式的数据：输入的数据首先用类型转换器Convert进行类型转换，所有数据统一转换为string类型，之后通过词法分析器Tokenizer
+读取json格式的数据：输入的数据首先用类型转换器Converter进行类型转换，所有数据统一转换为string类型，之后通过词法分析器Tokenizer
 对string进行词法分析，将string分解成为一个个token，最后使用语法分析器Parser对token序列进行语法分析，生成最终的dict。
 
-输出实例内容：把dict通过类型转换器Convert转换成需要的输出类型，之后输出。
+输出实例内容：把dict通过类型转换器Converter转换成需要的输出类型，之后输出。
 
 
 ### 1.1 Jsonparser()
@@ -42,7 +42,7 @@ jsonparser.py中包含六个类，分别为Jsonparser()，Convert()，Tokenizer(
 用字典d更新实例中的数据，类似于字典的update。
 
 
-### 1.2 Convert()
+### 1.2 Converter()
 实现了所需要的各种类型数据之间的转换。
 
 #### (1)init():
