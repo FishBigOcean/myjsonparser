@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
-status = ['BEGIN_OBJECT', 'END_OBJECT', 'BEGIN_ARRAY', 'END_ARRAY', 'END_FILE', 'COLON', 'COMMA', 'STRING', 'NUMBER', 'OTHER']
-status2char = {'BEGIN_OBJECT': '{', 'END_OBJECT': '}', 'BEGIN_ARRAY':'[', 'END_ARRAY': ']', 'COLON': ':', 'COMMA': ','}
+status = ['BEGIN_OBJECT', 'END_OBJECT', 'BEGIN_ARRAY', 'END_ARRAY', 'END_FILE', 'COLON', 'COMMA', 'STRING', 'NUMBER',
+          'OTHER']
+status2char = {'BEGIN_OBJECT': '{', 'END_OBJECT': '}', 'BEGIN_ARRAY': '[', 'END_ARRAY': ']', 'COLON': ':', 'COMMA': ','}
 char2status = {'{': 'BEGIN_OBJECT', '}': 'END_OBJECT', '[': 'BEGIN_ARRAY', ']': 'END_ARRAY', ':': 'COLON', ',': 'COMMA'}
+
 
 class Jsonparser():
     def __init__(self):
@@ -69,6 +71,7 @@ class Jsonparser():
         res = parser.run()
         self._data.update(res)
 
+
 class Converter():
     def __init__(self):
         self.data = None
@@ -79,7 +82,7 @@ class Converter():
         self.data = data
         self.res = []
         self.dict2string(self.data)
-        return ''.join(self.res) #.encode('unicode-escape').decode('utf-8')
+        return ''.join(self.res)  # .encode('unicode-escape').decode('utf-8')
 
     def dict2json(self, data):
         self.data = data
@@ -125,12 +128,16 @@ class Converter():
                 raise Parser_exception('the key of object must be string')
             val = d[key]
             self.res.append('"')
-            self.res.append(key.encode('unicode-escape').decode('utf-8').replace('"', '\\"').replace('\\x08', '\\b').replace('\\x0c', '\\f'))
+            self.res.append(
+                key.encode('unicode-escape').decode('utf-8').replace('"', '\\"').replace('\\x08', '\\b').replace(
+                    '\\x0c', '\\f'))
             self.res.append('"')
             self.res.append(': ')
             if isinstance(val, str):
                 self.res.append('"')
-                self.res.append(val.encode('unicode-escape').decode('utf-8').replace('"', '\\"').replace('\\x08', '\\b').replace('\\x0c', '\\f'))
+                self.res.append(
+                    val.encode('unicode-escape').decode('utf-8').replace('"', '\\"').replace('\\x08', '\\b').replace(
+                        '\\x0c', '\\f'))
                 self.res.append('"')
             elif isinstance(val, dict):
                 self.dict2string(val)
@@ -159,7 +166,9 @@ class Converter():
         for val in l:
             if isinstance(val, str):
                 self.res.append('"')
-                self.res.append(val.encode('unicode-escape').decode('utf-8').replace('"', '\\"').replace('\\x08', '\\b').replace('\\x0c', '\\f'))
+                self.res.append(
+                    val.encode('unicode-escape').decode('utf-8').replace('"', '\\"').replace('\\x08', '\\b').replace(
+                        '\\x0c', '\\f'))
                 self.res.append('"')
             elif isinstance(val, dict):
                 self.dict2string(val)
@@ -183,6 +192,7 @@ class Converter():
         else:
             self.res.append(']')
         return
+
 
 class Tokenizer():
     def __init__(self, s):
@@ -244,7 +254,7 @@ class Tokenizer():
         escapes = {'\"': '\"', '\\': '\\', '/': '/', 'b': '\b', 'f': '\f', 'n': '\n', 'r': '\r', 't': '\t', 'u': ''}
         while self.pointer.has_next():
             temp = self.pointer.next()
-            if ord(temp) < 32: # 0 - 31 is control characters
+            if ord(temp) < 32:  # 0 - 31 is control characters
                 raise Parser_exception('illegal input: control characters id %d' % ord(temp))
             elif temp == '\\':
                 temp = self.pointer.has_and_next('illegal input: no char after \\')
@@ -254,7 +264,8 @@ class Tokenizer():
                         if self.pointer.remain() >= 4:
                             for i in range(4):
                                 temp = self.pointer.next()
-                                if temp.isdigit() or 'a' <= temp <= 'f' or 'A' <= temp <= 'F': # \uxxxx is unicode, x rang from 0 - 9 or a - f or A - F
+                                if temp.isdigit() or 'a' <= temp <= 'f' or 'A' <= temp <= 'F':
+                                    # \uxxxx is unicode, x rang from 0 - 9 or a - f or A - F
                                     continue
                                 else:
                                     break
@@ -346,6 +357,7 @@ class Tokenizer():
             if ord(temp) not in legal_whitespace:
                 self.pointer.pre_index()
                 break
+        return
 
 class Parser():
     def __init__(self, tokens):
@@ -381,7 +393,7 @@ class Parser():
                     else:
                         cur_val = int(cur_val)
                     data[name] = cur_val
-                    next_status = {'COMMA', 'END_OBJECT'}   # # COMMA 逗号   COLON 冒号
+                    next_status = {'COMMA', 'END_OBJECT'}  # # COMMA 逗号   COLON 冒号
                 elif cur_status == 'BEGIN_OBJECT':
                     data[name] = self.parse_object()
                     next_status = {'COMMA', 'END_OBJECT'}
@@ -402,7 +414,8 @@ class Parser():
                 elif cur_status == 'END_OBJECT':
                     return data
             else:
-                raise Parser_exception('parsing errors: %s cant connected after %s in object' % (cur_status, self.pointer.pre_val(2)[0]))
+                raise Parser_exception(
+                    'parsing errors: %s cant connected after %s in object' % (cur_status, self.pointer.pre_val(2)[0]))
         raise Parser_exception('parsing errors: object')
 
     def parse_array(self):
@@ -435,8 +448,10 @@ class Parser():
                 elif cur_status == 'END_ARRAY':
                     return data
             else:
-                raise Parser_exception('parsing errors: %s cant connected after %s in array' % (cur_status, self.pointer.pre_val(2)[0]))
+                raise Parser_exception(
+                    'parsing errors: %s cant connected after %s in array' % (cur_status, self.pointer.pre_val(2)[0]))
         raise Parser_exception('parsing errors: array')
+
 
 class Pointer():
     def __init__(self, data):
@@ -456,7 +471,7 @@ class Pointer():
             return self.next()
         raise Parser_exception(s)
 
-    def pre_val(self, num = 1):
+    def pre_val(self, num=1):
         return self.data[max(0, self.index - num)]
 
     def pre_index(self):
@@ -467,6 +482,7 @@ class Pointer():
 
     def remain(self):
         return self.length - self.index
+
 
 class Parser_exception(Exception):
     def __init__(self, info):

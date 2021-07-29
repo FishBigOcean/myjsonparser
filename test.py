@@ -93,8 +93,6 @@ class Test_parser(unittest.TestCase):
             except Exception as e:
                 logging.warning('loads error: json_ok2 %d %s' % (num, case[0]))
                 raise e
-            if num == 17:
-                print(d, self.parser.dump_dict())
             d = json.loads(case[0])
             if d != self.parser.dump_dict():
                 logging.warning('dump_dict error: json_ok2 %d %s' % (num, case[0]))
@@ -137,12 +135,13 @@ class Test_parser(unittest.TestCase):
                 logging.warning('dump_file error: %d %s' % (num, file))
                 raise e
             self.assertTrue(filecmp.cmp(os.path.join(path, file), os.path.join(out_path, file)))
+        print('Pass all test cases')
         print('*' * 100)
 
     def test_set_val_get_val_update(self):
         print('test set_val get_val update')
         print('*' * 100)
-        js = '{"a":true,"b":false, "c": [1, 6.7, "d"]}'
+        js = '{"a":true, "b":false, "c": [1, 6.7, "d"]}'
         js2 = {'c': 0, 'd': None}
         self.parser.loads(js)
         d = json.loads(js)
@@ -154,6 +153,7 @@ class Test_parser(unittest.TestCase):
         self.assertFalse(self.parser._data is self.parser.dump_dict())
         self.parser.updata(js2)
         self.assertEqual(self.parser['c'], 0)
+        print('Pass all test cases')
         print('*' * 100)
 
 if __name__ == '__main__':
